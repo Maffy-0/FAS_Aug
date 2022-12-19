@@ -233,7 +233,7 @@ class BaseTrainer(object):
         #         "iteration": iter(self.train_loader_list[i])
         #     })        
 
-        if self.config.TRAIN.LOSS_TYPE == 'RnC' or self.config.TRAIN.LOSS_TYPE == 'C':
+        if self.config.TRAIN.PENALTY_MODE == 'RnC' or self.config.TRAIN.PENALTY_MODE == 'C':
             self.features = []
             def hook_function(modele,input,output):
                 self.features.append(torch.nn.functional.normalize(input[0], dim=1))
@@ -262,7 +262,7 @@ class BaseTrainer(object):
                 self.global_step += 1
             
 
-        if self.config.TRAIN.LOSS_TYPE == 'RnC' or self.config.TRAIN.LOSS_TYPE == 'C':
+        if self.config.TRAIN.PENALTY_MODE == 'RnC' or self.config.TRAIN.PENALTY_MODE == 'C':
             hook_handle.remove()
 
         self.lr_scheduler.step()
@@ -280,21 +280,18 @@ class BaseTrainer(object):
         lossRex = torch.tensor(0.)
         lossCon = torch.tensor(0.)
         lossBase = self._total_loss_calculation(pred, label)
-        if self.config.TRAIN.LOSS_TYPE == 'R':
-            lossRex = self.rex_loss_varOnSpoof(pred,label)
+        if self.config.TRAIN.PENALTY_MODE == 'R':
+            lossRex = self.rex_loss_varOnLoss(pred,label)
             loss = lossBase + lossRex*self.config.TRAIN.BETA
-        elif self.config.TRAIN.LOSS_TYPE == 'RnC':
-            feature = self.features.pop()
-            lossRex = self.rex_loss_varOnSpoof(pred,label)
-            lossCon = self.supConLoss_real(feature,label)
-            loss = lossBase + lossRex*self.config.TRAIN.BETA + lossCon*self.config.TRAIN.ALPHA
-        elif self.config.TRAIN.LOSS_TYPE == 'C':
+        elif self.config.TRAIN.PENALTY_MODE == 'C':
             feature = self.features.pop()
             lossCon = self.supConLoss(feature,label)
             loss = lossBase + lossCon*self.config.TRAIN.ALPHA            
-        elif self.config.TRAIN.LOSS_TYPE == 'L':
-            lossRex = self.rex_loss_varOnLoss(pred,label)
-            loss = lossBase + lossRex*self.config.TRAIN.BETA
+        elif self.config.TRAIN.PENALTY_MODE == 'RnC':
+            feature = self.features.pop()
+            lossRex = self.rex_loss_varOnSpoof(pred,label)
+            lossCon = self.supConLoss_real(feature,label)
+            loss = lossBase + lossRex*self.config.TRAIN.BETA + lossCon*self.config.TRAIN.ALPHA            
         else:
             loss = lossBase
 

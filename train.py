@@ -65,7 +65,7 @@ def setup(args):
 
     assert args.trainer != None, "pls input the argument '--trainer'"
 
-    trainer_lib = importlib.import_module(args.trainer)
+    trainer_lib = importlib.import_module('models.'+args.trainer)
     if 'custom_cfg' in trainer_lib.__all__:
         cfg.merge_from_other_cfg(trainer_lib.custom_cfg)
 

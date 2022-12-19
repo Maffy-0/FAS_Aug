@@ -38,8 +38,8 @@ _C.DATA.IN_SIZE = 256 # Input image size
 _C.DATA.DATASET = 'ZipDataset'
 _C.DATA.ROOT_DIR = '/home/rizhao/data/FAS/all_public_datasets_zip/' 
 _C.DATA.SUB_DIR = 'EXT0.0'
-_C.DATA.NUM_FRAMES = 6 # number of frames extracted from a video
-_C.DATA.BATCH_SIZE = 4
+_C.DATA.NUM_FRAMES = 5 # number of frames extracted from a video
+_C.DATA.BATCH_SIZE = 2
 _C.DATA.NUM_WORKERS = 10
 _C.DATA.LABEL_SMOOTHING = 0.0
 
@@ -53,18 +53,15 @@ _C.DATA.NORMALIZE.STD = [0.229, 0.224, 0.225]
 # MODEL/NETWORK  config
 # ---------------------------------------------------------------------------- #
 _C.MODEL.NUM_CLASSES = 2
-# _C.MODEL.ARCH = 'resnet18'
-# _C.MODEL.IMAGENET_PRETRAIN = True  # check where it should use
-
 
 # ---------------------------------------------------------------------------- #
 # MODEL/NETWORK  config
 # ---------------------------------------------------------------------------- #
 _C.TRAIN.RESUME = '' # Path to the resume ckpt
-_C.TRAIN.INIT_LR = 1e-4 #1e-3 or 1e-4
+_C.TRAIN.INIT_LR = 1e-4 # 1e-3 for --trainer bc , 1e-4 for --trainer vit_convpass/vit_adapter
 _C.TRAIN.BETA = 10.0
-_C.TRAIN.ALPHA = 0.2
-_C.TRAIN.LOSS_TYPE = 'RnC'
+_C.TRAIN.ALPHA = 0.02
+_C.TRAIN.PENALTY_MODE = 'RnC' # 'RnC': Compute the empirical risk of spoofing examples and the Supervised Constrastive loss to real examples, 'R':  Compute only the empirical risk of all examples, 'C': Compute only the Supervised Constrastive loss to all examples
 _C.TRAIN.ITERATION = 0
 
 _C.TRAIN.EPOCHS = 200
@@ -82,7 +79,7 @@ _C.TRAIN.AUG.NUM_OPS = 8
 _C.TRAIN.AUG.NUM_MAG = 10
 _C.TRAIN.AUG.NUM_POLICIES = 1 # M
 _C.TRAIN.AUG.NUM_SUBPOLICIES = 5 # Q
-_C.TRAIN.AUG.BAG_LIB = 'FAS_Augmentations' #'MIX_Augmentations', 'TRAD_Augmentations'
+_C.TRAIN.AUG.BAG_LIB = 'FAS_Augmentations' #'MIX_Augmentations', 'TRAD_Augmentations' use different algorithm for computing loss and data loadiung, so which is not runable at this code.
 
 # TEST Config
 _C.TEST.CKPT = '' # checkpoint to load
