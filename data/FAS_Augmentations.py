@@ -20,33 +20,33 @@ class FAS_Augmentations(object):
             self.config = config
         self.al = [
         # (operation, min, max, changeLabel)
-        ("changeColorGamut", 0.1, 10, False),  # 0
-        ("changeRGB2CMYK", 0.1, 10, True),  # 1
-        ("addReflection", 0.01, 0.2, True),  # 2
-        ("addBlueNoise", 0.01, 0.4, True),  # 3
-        ("addMoirePattern", 0.01, 0.3, True),  # 4
-        ("addHalftone", 0.01, 0.2, True),  # 5
-        ("addMotionBlur", 1, 16, False),  # 6
-        ("addQualityLose", 0.01, 0.9, False),  # 7
-        # ("original", 0, 0.1, False) # 8
+        ("Color_Diversity", 0.1, 10, False),  # 0
+        ("Color_Distortion", 0.1, 10, True),  # 1
+        ("Reflection", 0.01, 0.2, True),  # 2
+        ("BN_Halftone", 0.01, 0.4, True),  # 3
+        ("Moire_Pattern", 0.01, 0.3, True),  # 4
+        ("SFC_Halftone", 0.01, 0.2, True),  # 5
+        ("Hand_Trembling", 1, 16, False),  # 6
+        ("Low_Resolution", 0.01, 0.9, False),  # 7
+        # ("Original", 0, 0.1, False) # 8
     ]
         self.name_dict = {
-            "changeColorGamut": self.changeColorGamut,
-            "changeRGB2CMYK": self.changeRGB2CMYK,
-            "addReflection": self.addReflection,
-            "addBlueNoise": self.addBlueNoise,
-            "addMoirePattern": self.addMoirePattern,
-            "addHalftone": self.addHalftone,
-            "addMotionBlur": self.addMotionBlur,
-            "addQualityLose": self.addQualityLose,
-            "original": self.original
+            "Color_Diversity": self.Color_Diversity,
+            "Color_Distortion": self.Color_Distortion,
+            "Reflection": self.Reflection,
+            "BN_Halftone": self.BN_Halftone,
+            "Moire_Pattern": self.Moire_Pattern,
+            "SFC_Halftone": self.SFC_Halftone,
+            "Hand_Trembling": self.Hand_Trembling,
+            "Low_Resolution": self.Low_Resolution,
+            "Original": self.Original
         }
         self.augment_dict = {}
         for i in self.al:
             self.augment_dict[i[0]] = (self.name_dict[i[0]], i[1],i[2],i[3])   
         return
 
-    def addReflection(self, img, a):
+    def Reflection(self, img, a):
         assert 0.0 < a <= 0.5
         img = img.convert('RGBA')
         texture = getTexture('R', img.size)
@@ -55,7 +55,7 @@ class FAS_Augmentations(object):
         res = comb_rgba.convert('RGB')
         return res
 
-    def addBlueNoise(self, img, a):
+    def BN_Halftone(self, img, a):
         assert 0.0 < a <= 0.5
         img = img.convert('RGBA')
         texture = getTexture('BN', img.size)
@@ -64,7 +64,7 @@ class FAS_Augmentations(object):
         res = comb_rgba.convert('RGB')
         return res
 
-    def addMoirePattern(self, img, a):
+    def Moire_Pattern(self, img, a):
         assert 0.0 < a <= 0.5
         img = img.convert('RGBA')
         texture = getTexture('MP', img.size)
@@ -73,7 +73,7 @@ class FAS_Augmentations(object):
         res = comb_rgba.convert('RGB')
         return res
 
-    def changeColorGamut(self, img, nil):  # [-0.3, 0.3]
+    def Color_Diversity(self, img, nil):  # [-0.3, 0.3]
         assert 0 < nil
         rgb_profile_path = 'data/profile/RGB Profiles/'
         rgb_profile_dict = {
@@ -98,7 +98,7 @@ class FAS_Augmentations(object):
         res = ImageCms.profileToProfile(img, rgb_p1, rgb_p2)
         return res
 
-    def changeRGB2CMYK(self, img, nil):
+    def Color_Distortion(self, img, nil):
         assert 0 < nil
         rgb_profile_path = 'data/profile/RGB Profiles/'
         rgb_profile_dict = {
@@ -135,12 +135,12 @@ class FAS_Augmentations(object):
         res = ImageCms.applyTransform(img, cmyk2rgb_trans)
         return res
 
-    def addHalftone(self, img, a):
+    def SFC_Halftone(self, img, a):
         assert 0.0 < a <= 0.5
         h = img.size[0]
         w = img.size[1]
         shrink = cv2.resize(np.asarray(img), (int(h/3),int(w/3)))
-        ht = halftone(shrink)
+        ht = sfc_halftone(shrink)
         ht = Image.fromarray(np.uint8(ht)).convert('RGBA')
         ht = ht.resize((h,w))
         img = img.convert('RGBA')
@@ -148,7 +148,7 @@ class FAS_Augmentations(object):
         res = comb_rgba.convert('RGB') 
         return res
 
-    def addMotionBlur(self, img, ks):
+    def Hand_Trembling(self, img, ks):
         ks = int(ks)
         assert 0 < ks <= 20
         dict_direction = {'H': 'Horizontal',
@@ -174,7 +174,7 @@ class FAS_Augmentations(object):
         res = Image.fromarray(np.uint8(img_motionBlur))
         return res
 
-    def addQualityLose(self, img, sr):
+    def Low_Resolution(self, img, sr):
         assert 0 < sr <= 1
         hw = img.size
         shrink_size = int( (((sr-0.0001)*(1/6-1)/(1-0.0001))+1) * hw[0] )
@@ -196,7 +196,7 @@ class FAS_Augmentations(object):
         res = Image.fromarray(np.uint8(enlarged_img))    
         return res
 
-    def original (self, img, _):
+    def Original (self, img, _):
         res = img
         return res
 
@@ -223,5 +223,5 @@ class FAS_Augmentations(object):
 # if __name__ == '__main__':
 #     input_pic_path = '/home/rizhao/projects/Cecelia/a-transform/input/6.png'
 #     input_pic = Image.open(input_pic_path)
-#     res = addQualityLose(input_pic, 0.5)
+#     res = Low_Resolution(input_pic, 0.5)
 #     res.save('./test/LQ.png')

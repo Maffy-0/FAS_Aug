@@ -20,14 +20,14 @@ class MIX_Augmentations(object):
             self.config = config
         self.al = [
         # (operation, min, max, changeLabel)
-        ("changeColorGamut", 0.1, 10, False),  # 0
-        ("changeRGB2CMYK", 0.1, 10, True),  # 1
-        ("addReflection", 0.01, 0.2, True),  # 2
-        ("addBlueNoise", 0.01, 0.4, True),  # 3
-        ("addMoirePattern", 0.01, 0.3, True),  # 4
-        ("addHalftone", 0.01, 0.2, True),  # 5
-        ("addMotionBlur", 1, 16, False),  # 6
-        ("addQualityLose", 0.01, 0.9, False),  # 7
+        ("Color_Diversity", 0.1, 10, False),  # 0
+        ("colorDistortion", 0.1, 10, True),  # 1
+        ("Reflection", 0.01, 0.2, True),  # 2
+        ("BN_Halftone", 0.01, 0.4, True),  # 3
+        ("Moire_Pattern", 0.01, 0.3, True),  # 4
+        ("SFC_Halftone", 0.01, 0.2, True),  # 5
+        ("Hand_Trembling", 1, 16, False),  # 6
+        ("Low_Resolution", 0.01, 0.9, False),  # 7
         ("ShearX", 0, 0.3, False),  # 0
         ("ShearY", 0, 0.3, False),  # 1
         ("TranslateX", 0, 0.45, False),  # 2
@@ -45,15 +45,15 @@ class MIX_Augmentations(object):
         ("Cutout", 0, 0.2, False),  # 14        
     ]
         self.name_dict = {
-            "changeColorGamut": self.changeColorGamut,
-            "changeRGB2CMYK": self.changeRGB2CMYK,
-            "addReflection": self.addReflection,
-            "addBlueNoise": self.addBlueNoise,
-            "addMoirePattern": self.addMoirePattern,
-            "addHalftone": self.addHalftone,
-            "addMotionBlur": self.addMotionBlur,
-            "addQualityLose": self.addQualityLose,
-            "original": self.original,
+            "Color_Diversity": self.Color_Diversity,
+            "colorDistortion": self.colorDistortion,
+            "Reflection": self.Reflection,
+            "BN_Halftone": self.BN_Halftone,
+            "Moire_Pattern": self.Moire_Pattern,
+            "SFC_Halftone": self.SFC_Halftone,
+            "Hand_Trembling": self.Hand_Trembling,
+            "Low_Resolution": self.Low_Resolution,
+            "Original": self.Original,
             "ShearX": self.ShearX,
             "ShearY": self.ShearY,
             "TranslateX": self.TranslateX,
@@ -77,7 +77,7 @@ class MIX_Augmentations(object):
 
         return
 
-    def addReflection(self, img, a):
+    def Reflection(self, img, a):
         assert 0.0 < a <= 0.5
         img = img.convert('RGBA')
         texture = getTexture('R', img.size)
@@ -87,7 +87,7 @@ class MIX_Augmentations(object):
         # res.save('./output/test/R.png')
         return res
 
-    def addBlueNoise(self, img, a):
+    def BN_Halftone(self, img, a):
         assert 0.0 < a <= 0.5
         img = img.convert('RGBA')
         texture = getTexture('BN', img.size)
@@ -97,7 +97,7 @@ class MIX_Augmentations(object):
         # res.save('./output/test/BN.png')
         return res
 
-    def addMoirePattern(self, img, a):
+    def Moire_Pattern(self, img, a):
         assert 0.0 < a <= 0.5
         img = img.convert('RGBA')
         texture = getTexture('MP', img.size)
@@ -107,7 +107,7 @@ class MIX_Augmentations(object):
         # res.save('./output/test/MP.png')
         return res
 
-    def changeColorGamut(self, img, nil):  # [-0.3, 0.3]
+    def Color_Diversity(self, img, nil):  # [-0.3, 0.3]
         assert 0 < nil
         rgb_profile_path = 'data/profile/RGB Profiles/'
         rgb_profile_dict = {
@@ -133,7 +133,7 @@ class MIX_Augmentations(object):
         # res.save('./output/test/RGB.png')
         return res
 
-    def changeRGB2CMYK(self, img, nil):
+    def colorDistortion(self, img, nil):
         assert 0 < nil
         rgb_profile_path = 'data/profile/RGB Profiles/'
         rgb_profile_dict = {
@@ -172,12 +172,12 @@ class MIX_Augmentations(object):
         # res.save('./output/test/CMYK.png')
         return res
 
-    def addHalftone(self, img, a):
+    def SFC_Halftone(self, img, a):
         assert 0.0 < a <= 0.5
         h = img.size[0]
         w = img.size[1]
         shrink = cv2.resize(np.asarray(img), (int(h/3),int(w/3)))
-        ht = halftone(shrink)
+        ht = sfc_halftone(shrink)
         ht = Image.fromarray(np.uint8(ht)).convert('RGBA')
         ht = ht.resize((h,w))
         img = img.convert('RGBA')
@@ -186,7 +186,7 @@ class MIX_Augmentations(object):
         # res.save('./output/test/H.png')
         return res
 
-    def addMotionBlur(self, img, ks):
+    def Hand_Trembling(self, img, ks):
         ks = int(ks)
         assert 0 < ks <= 20
         dict_direction = {'H': 'Horizontal',
@@ -214,7 +214,7 @@ class MIX_Augmentations(object):
         # res.save('./output/test/MB.png')
         return res
 
-    def addQualityLose(self, img, sr):
+    def Low_Resolution(self, img, sr):
         assert 0 < sr <= 1
         hw = img.size
         shrink_size = int( (((sr-0.0001)*(1/6-1)/(1-0.0001))+1) * hw[0] )
@@ -237,9 +237,9 @@ class MIX_Augmentations(object):
         # res.save('./output/test/QL.png')
         return res
 
-    def original (self, img, _):
+    def Original (self, img, _):
         res = img
-        # res.save('./output/test/original.png')
+        # res.save('./output/test/Original.png')
         return res
     
     def ShearX(self, img, v):  # [-0.3, 0.3]
@@ -397,5 +397,5 @@ class MIX_Augmentations(object):
 # if __name__ == '__main__':
 #     input_pic_path = '/home/rizhao/projects/Cecelia/a-transform/input/6.png'
 #     input_pic = Image.open(input_pic_path)
-#     res = addQualityLose(input_pic, 0.5)
+#     res = Low_Resolution(input_pic, 0.5)
 #     res.save('./test/LQ.png')

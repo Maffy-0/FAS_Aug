@@ -53,7 +53,7 @@ def getTexture(brmp, img_size):
     return b_img_crop
 #
 
-# Halftone
+# SFC-Halftone
 def get_image_range(image):
     return np.min(image), np.max(image)
 
@@ -87,7 +87,7 @@ def gen_halftone_masks():
     m[1, 1, 9] = 1
     return m
 
-def halftone(image):
+def sfc_halftone(image):
     gray      = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     adjusted  = adjust_gray(gray, 0, 9)
     m         = gen_halftone_masks()
