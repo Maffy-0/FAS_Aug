@@ -124,42 +124,24 @@ class QuickGELU(nn.Module):
 
 
 class Convpass(nn.Module):
-    def __init__(self, dim=8, xavier_init=False, conv_type='conv'):
+    def __init__(self, dim=8, xavier_init=False):
         super().__init__()
 
+        self.adapter_conv = nn.Conv2d(dim, dim, 3, 1, 1)
 
-        if conv_type=='conv':
-            self.adapter_conv = nn.Conv2d(dim, dim, 3, 1, 1)
+        if xavier_init:
+            nn.init.xavier_uniform_(self.adapter_conv.weight)
+        else:
+            nn.init.zeros_(self.adapter_conv.weight)
+            self.adapter_conv.conv.data[:, :, 1, 1] += torch.eye(8, dtype=torch.float)
+        nn.init.zeros_(self.adapter_conv.bias)
 
-            if xavier_init:
-                nn.init.xavier_uniform_(self.adapter_conv.weight)
-            else:
-                nn.init.zeros_(self.adapter_conv.weight)
-                self.adapter_conv.conv.data[:, :, 1, 1] += torch.eye(8, dtype=torch.float)
-            nn.init.zeros_(self.adapter_conv.bias)
-
-            self.adapter_down = nn.Linear(768, dim)  # equivalent to 1 * 1 Conv
-            self.adapter_up = nn.Linear(dim, 768)  # equivalent to 1 * 1 Conv
-            nn.init.xavier_uniform_(self.adapter_down.weight)
-            nn.init.zeros_(self.adapter_down.bias)
-            nn.init.zeros_(self.adapter_up.weight)
-            nn.init.zeros_(self.adapter_up.bias)
-
-        elif conv_type=='cdc':
-            self.adapter_conv = Conv2d_cd(dim, dim, 3, 1, 1)
-            if xavier_init:
-                nn.init.xavier_uniform_(self.adapter_conv.conv.weight)
-            else:
-                nn.init.zeros_(self.adapter_conv.conv.weight)
-                self.adapter_conv.conv.weight.data[:, :, 1, 1] += torch.eye(8, dtype=torch.float)
-            #nn.init.zeros_(self.adapter_conv.conv.bias)
-
-            self.adapter_down = nn.Linear(768, dim)  # equivalent to 1 * 1 Conv
-            self.adapter_up = nn.Linear(dim, 768)  # equivalent to 1 * 1 Conv
-            nn.init.xavier_uniform_(self.adapter_down.weight)
-            nn.init.zeros_(self.adapter_down.bias)
-            nn.init.zeros_(self.adapter_up.weight)
-            nn.init.zeros_(self.adapter_up.bias)
+        self.adapter_down = nn.Linear(768, dim)  # equivalent to 1 * 1 Conv
+        self.adapter_up = nn.Linear(dim, 768)  # equivalent to 1 * 1 Conv
+        nn.init.xavier_uniform_(self.adapter_down.weight)
+        nn.init.zeros_(self.adapter_down.bias)
+        nn.init.zeros_(self.adapter_up.weight)
+        nn.init.zeros_(self.adapter_up.bias)
 
         self.act = QuickGELU()
         self.dropout = nn.Dropout(0.1)
@@ -188,25 +170,25 @@ class Convpass(nn.Module):
         return x_up
 
 
-def set_Convpass(model, method, dim=8, s=1, xavier_init=False, conv_type='conv'):
+def set_Convpass(model, method, dim=8, s=1, xavier_init=False):
 
     if method == 'convpass':
 
         for _ in model.children():
             if type(_) == timm.models.vision_transformer.Block:
-                _.adapter_attn = Convpass(dim, xavier_init, conv_type=conv_type)
-                _.adapter_mlp = Convpass(dim, xavier_init,conv_type=conv_type)
+                _.adapter_attn = Convpass(dim, xavier_init)
+                _.adapter_mlp = Convpass(dim, xavier_init)
                 _.s = s
                 bound_method = forward_block.__get__(_, _.__class__)
                 setattr(_, 'forward', bound_method)
             elif len(list(_.children())) != 0:
-                set_Convpass(_, method, dim, s, xavier_init, conv_type=conv_type)
+                set_Convpass(_, method, dim, s, xavier_init)
     else:
         for _ in model.children():
             if type(_) == timm.models.vision_transformer.Block:
-                _.adapter_attn = Convpass(dim, xavier_init, conv_type=conv_type)
+                _.adapter_attn = Convpass(dim, xavier_init)
                 _.s = s
                 bound_method = forward_block_attn.__get__(_, _.__class__)
                 setattr(_, 'forward', bound_method)
             elif len(list(_.children())) != 0:
-                set_Convpass(_, method, dim, s, xavier_init, conv_type=conv_type)
+                set_Convpass(_, method, dim, s, xavier_init)

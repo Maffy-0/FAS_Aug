@@ -1,0 +1,16 @@
+torch
+torchvision
+torchaudio
+numpy
+zipfile
+pillow
+opencv-python
+pandas
+logging
+importlib
+tqdm
+scikit-learn
+regex
+pickle5
+collection
+yacs

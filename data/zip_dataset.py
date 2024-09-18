@@ -1,7 +1,3 @@
-# coding: utf-8
-# import torch.multiprocessing as mp
-# mp.set_start_method('spawn')
-
 import cv2
 import numpy as np
 import torch

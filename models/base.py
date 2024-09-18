@@ -1,5 +1,3 @@
-from ast import parse
-from math import nan
 import os
 import torch
 import logging
@@ -97,6 +95,7 @@ class BaseTrainer(object):
         self.transform_aug_list = []
         transform_basic = get_basetransform(config)
 
+        # create augmented domain
         if self.train_mode:
             for i in range(config.DATA.EXTRA_DOMAIN):
                 tran = copy.deepcopy(transform_basic)
@@ -137,7 +136,7 @@ class BaseTrainer(object):
                 
 
     def set_augment(self):
-        augment_lib = importlib.import_module("data."+self.config.TRAIN.AUG.BAG_LIB).__dict__[self.config.TRAIN.AUG.BAG_LIB]
+        augment_lib = importlib.import_module("data."+self.config.TRAIN.AUG.BAG).__dict__[self.config.TRAIN.AUG.BAG]
         self.augment = augment_lib(self.config)
 
     def train(self, ):
@@ -145,6 +144,9 @@ class BaseTrainer(object):
         if self.config.TRAIN.RESUME and os.path.exists(self.config.TRAIN.RESUME):
             logging.info("Resume=True.")
             self.load_checkpoint(self.config.TRAIN.RESUME)  
+        if self.config.CUDA:
+            logging.info("Number of GPUs: {}".format(torch.cuda.device_count()))
+            self.network = torch.nn.DataParallel(self.network)
 
         for epoch in range(self.start_epoch, self.epochs + 1):
             logging.info('\nEpoch: {}/{} - LR: {:.6f}'.format(
@@ -211,7 +213,7 @@ class BaseTrainer(object):
 
         self.network.train()
 
-        # get policies randomly
+        # get data augmentation policies randomly
         parsed_policies_list = []
         for i in range(self.config.DATA.EXTRA_DOMAIN):
             parsed_policies = random_parse_policies(self.augment, self.M, self.Q, self.num_mag)
@@ -224,24 +226,14 @@ class BaseTrainer(object):
             trfs = self.transform_aug_list[i].transforms
             trfs[1] = MultiAugmentation(self.augment, parsed_policies, epoch)
 
-        # restart dataloader
-        # logging.info('train_loader reset')
-        # self.train_loader_ListnIter = []
-        # for i in range(len(self.train_loader_list)):
-        #     self.train_loader_ListnIter.append({
-        #         "data_loader": self.train_loader_list[i],
-        #         "iteration": iter(self.train_loader_list[i])
-        #     })        
+        self.features = []
+        def hook_function(modele,input,output):
+            self.features.append(torch.nn.functional.normalize(input[0], dim=1))
 
-        if self.config.TRAIN.PENALTY_MODE == 'RnC' or self.config.TRAIN.PENALTY_MODE == 'C':
-            self.features = []
-            def hook_function(modele,input,output):
-                self.features.append(torch.nn.functional.normalize(input[0], dim=1))
-
-            if 'vit' in self.config.MODEL.ARCH:
-                hook_handle = self.network.module.head.register_forward_hook(hook_function)
-            else:
-                hook_handle = self.network.module.fc.register_forward_hook(hook_function)
+        if 'vit' in self.config.MODEL.ARCH:
+            hook_handle = self.network.module.head.register_forward_hook(hook_function)
+        else:
+            hook_handle = self.network.module.fc.register_forward_hook(hook_function)
 
         with tqdm(total=self.iteration) as pbar:
             for iter_num in range(self.iteration): 
@@ -261,9 +253,7 @@ class BaseTrainer(object):
 
                 self.global_step += 1
             
-
-        if self.config.TRAIN.PENALTY_MODE == 'RnC' or self.config.TRAIN.PENALTY_MODE == 'C':
-            hook_handle.remove()
+        hook_handle.remove()
 
         self.lr_scheduler.step()
         for i in range(self.config.DATA.EXTRA_DOMAIN):
@@ -277,23 +267,13 @@ class BaseTrainer(object):
         network_input, label = batch_data[0].cuda(), batch_data[1].cuda()
         pred = self.network(network_input)
 
-        lossRex = torch.tensor(0.)
+        lossSARE = torch.tensor(0.)
         lossCon = torch.tensor(0.)
         lossBase = self._total_loss_calculation(pred, label)
-        if self.config.TRAIN.PENALTY_MODE == 'R':
-            lossRex = self.rex_loss_varOnLoss(pred,label)
-            loss = lossBase + lossRex*self.config.TRAIN.BETA
-        elif self.config.TRAIN.PENALTY_MODE == 'C':
-            feature = self.features.pop()
-            lossCon = self.supConLoss(feature,label)
-            loss = lossBase + lossCon*self.config.TRAIN.ALPHA            
-        elif self.config.TRAIN.PENALTY_MODE == 'RnC':
-            feature = self.features.pop()
-            lossRex = self.rex_loss_varOnSpoof(pred,label)
-            lossCon = self.supConLoss_real(feature,label)
-            loss = lossBase + lossRex*self.config.TRAIN.BETA + lossCon*self.config.TRAIN.ALPHA            
-        else:
-            loss = lossBase
+        feature = self.features.pop()
+        lossSARE = self.sare_loss_varOnSpoof(pred,label)
+        lossCon = self.supConLoss_real(feature,label)
+        loss = lossBase + self.config.TRAIN.ALPHA*lossCon + self.config.TRAIN.BETA*lossSARE            
 
         # compute gradients and update SGD
         optimizer.zero_grad()
@@ -428,10 +408,6 @@ class BaseTrainer(object):
         output_scores = output_scores.cpu().numpy()[:, 1]
         return output_scores
 
-    # def _aug_loss_calculation(self, output_prob, target):
-    #     face_label = target.cuda()
-    #     return self.criterion_smooth(output_prob, face_label)
-
     def _total_loss_calculation(self, output_prob, target):
         face_label = target.cuda()
         return self.criterion(output_prob, face_label)
@@ -442,7 +418,7 @@ class BaseTrainer(object):
         df = pd.DataFrame(metrics, columns=['EER', 'MIN_HTER', 'AUC'], index=[metrics['output_path']])
         df.to_csv(path, mode='a+', header=False)        
 
-    def rex_loss_varOnSpoof(self,pred,label):
+    def sare_loss_varOnSpoof(self,pred,label):
         loss_per_domain = torch.zeros(self.train_loader_len).cuda()
         for domain_id, (y_per_domain, labels_per_domain) in enumerate(zip(pred.chunk(self.train_loader_len, dim=0), label.chunk(self.train_loader_len, dim=0))):
             fakeLabel_idx = (labels_per_domain == 0).nonzero(as_tuple=True)
@@ -485,7 +461,7 @@ class BaseTrainer(object):
 
         return lossCon    
 
-    def rex_loss_varOnLoss(self,pred,label):
+    def sare_loss(self,pred,label):
         loss_per_domain = torch.zeros(self.train_loader_len).cuda()
         for domain_id, (y_per_domain, labels_per_domain) in enumerate(zip(pred.chunk(self.train_loader_len, dim=0), label.chunk(self.train_loader_len, dim=0))):
             loss_per_domain[domain_id] = self._total_loss_calculation(y_per_domain, labels_per_domain)

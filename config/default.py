@@ -5,8 +5,8 @@ from yacs.config import CfgNode as CN
 # Init
 # -----------------------------------------------------------------------------#
 _C = CN(new_allowed=True)
-_C.OUTPUT_DIR = 'output/test'
-_C.RESULT_FILE = './output_bs24/csvResult.csv'
+_C.OUTPUT_DIR = 'output/train'
+_C.RESULT_FILE = './output/csvResult.csv'
 _C.DEBUG = False
 _C.SEED = 666
 _C.CUDA = True
@@ -61,7 +61,6 @@ _C.TRAIN.RESUME = '' # Path to the resume ckpt
 _C.TRAIN.INIT_LR = 1e-4 # 1e-3 for --trainer bc , 1e-4 for --trainer vit_convpass/vit_adapter
 _C.TRAIN.BETA = 10.0
 _C.TRAIN.ALPHA = 0.02
-_C.TRAIN.PENALTY_MODE = 'RnC' # 'RnC': Compute the empirical risk of spoofing examples and the Supervised Constrastive loss to real examples, 'R':  Compute only the empirical risk of all examples, 'C': Compute only the Supervised Constrastive loss to all examples
 _C.TRAIN.ITERATION = 0
 
 _C.TRAIN.EPOCHS = 200
@@ -79,14 +78,13 @@ _C.TRAIN.AUG.NUM_OPS = 8
 _C.TRAIN.AUG.NUM_MAG = 10
 _C.TRAIN.AUG.NUM_POLICIES = 1 # M
 _C.TRAIN.AUG.NUM_SUBPOLICIES = 5 # Q
-_C.TRAIN.AUG.BAG_LIB = 'FAS_Augmentations' #'MIX_Augmentations', 'TRAD_Augmentations' use different algorithm for computing loss and data loadiung, so which is not runable at this code.
+_C.TRAIN.AUG.BAG = 'FAS_Augmentations' #'MIX_Augmentations', 'TRAD_Augmentations' use different algorithm for computing loss and data loadiung, so which is not runable at this code.
 
 # TEST Config
 _C.TEST.CKPT = '' # checkpoint to load
 _C.TEST.TAG = 'test'
 _C.TEST.NO_INFERENCE = False # Load metrics from TEST.OUTPUT_DIR and conduct testing
 _C.TEST.THR = 0.5 # Threshold for calculating HTER
-# _C.TEST.MORE = False # Whether to collect more statistics
 
 
 
