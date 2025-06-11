@@ -72,7 +72,8 @@ class FAS_Augmentations(object):
 
     def Color_Diversity(self, img, nil):  # [-0.3, 0.3]
         assert 0 < nil
-        rgb_profile_path = 'data/profile/RGB Profiles/'
+        fas_aug_base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        rgb_profile_path = os.path.join(fas_aug_base, 'data/profile/RGB Profiles/')
         rgb_profile_dict = {
                 "AdobeRGB1998.icc" : "A98",
                 "AppleRGB.icc" : "A",
@@ -97,7 +98,8 @@ class FAS_Augmentations(object):
 
     def Color_Distortion(self, img, nil):
         assert 0 < nil
-        rgb_profile_path = 'data/profile/RGB Profiles/'
+        fas_aug_base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        rgb_profile_path = os.path.join(fas_aug_base, 'data/profile/RGB Profiles/')
         rgb_profile_dict = {
                 "AdobeRGB1998.icc" : "A98",
                 "AppleRGB.icc" : "A",
@@ -111,7 +113,7 @@ class FAS_Augmentations(object):
                 "DonRGB4.icm" : "D",
                 "BestRGB.icm" : "B"
             }
-        cmyk_profile_path = 'data/profile/CMYK Profiles/'
+        cmyk_profile_path = os.path.join(fas_aug_base, 'data/profile/CMYK Profiles/')
         cmyk_profile_dict = {
                 "EuroscaleCoated.icc" : "EC",
                 "EuroscaleUncoated.icc" : "EU",
