@@ -12,17 +12,32 @@ def get_background_dict(backDirPath, backNameList):
         backDict[name] = Image.open(backPath).convert('RGB')
     return backDict
 
-R_DIRPATH = "data/background/"
-R_NAME_LIST = os.listdir(R_DIRPATH)
-R_DICT = get_background_dict(R_DIRPATH, R_NAME_LIST)
+# 現在のファイルの位置を基準として相対パスを設定
+current_dir = os.path.dirname(os.path.abspath(__file__))
 
-BN_DIRPATH = "data/noiseTexture/"
-BN_NAME_LIST = os.listdir(BN_DIRPATH)
-BN_DICT = get_background_dict(BN_DIRPATH, BN_NAME_LIST)
+R_DIRPATH = os.path.join(current_dir, "background")
+if os.path.exists(R_DIRPATH):
+    R_NAME_LIST = os.listdir(R_DIRPATH)
+    R_DICT = get_background_dict(R_DIRPATH, R_NAME_LIST)
+else:
+    R_NAME_LIST = []
+    R_DICT = {}
 
-MP_DIRPATH = "data/MPTexture/"
-MP_NAME_LIST = os.listdir(MP_DIRPATH)
-MP_DICT = get_background_dict(MP_DIRPATH, MP_NAME_LIST)
+BN_DIRPATH = os.path.join(current_dir, "noiseTexture")
+if os.path.exists(BN_DIRPATH):
+    BN_NAME_LIST = os.listdir(BN_DIRPATH)
+    BN_DICT = get_background_dict(BN_DIRPATH, BN_NAME_LIST)
+else:
+    BN_NAME_LIST = []
+    BN_DICT = {}
+
+MP_DIRPATH = os.path.join(current_dir, "MPTexture")
+if os.path.exists(MP_DIRPATH):
+    MP_NAME_LIST = os.listdir(MP_DIRPATH)
+    MP_DICT = get_background_dict(MP_DIRPATH, MP_NAME_LIST)
+else:
+    MP_NAME_LIST = []
+    MP_DICT = {}
 
 def backgroundCrop(b_img,img_size,brmp):
     scale = 1
@@ -47,6 +62,21 @@ def getTexture(brmp, img_size):
             "BN" : BN_DICT,
             "MP" : MP_DICT
     }
+    
+    # テクスチャファイルが存在しない場合の対処
+    if not background_nameList_dir[brmp]:
+        # 単色のテクスチャを生成
+        print(f"警告: {brmp} テクスチャが見つかりません。デフォルトテクスチャを使用します。")
+        if brmp == "R":  # Reflection - 薄いグレー
+            color = (200, 200, 200, 128)
+        elif brmp == "BN":  # Blue Noise - ランダムノイズ
+            noise = np.random.randint(0, 256, (img_size[1], img_size[0], 3))
+            return Image.fromarray(noise.astype(np.uint8)).convert('RGBA')
+        else:  # MP - Moire Pattern - 薄い白
+            color = (240, 240, 240, 64)
+        
+        return Image.new('RGBA', img_size, color)
+    
     b_name = random.choice(background_nameList_dir[brmp])
     b_img = texture_dir[brmp][b_name].convert('RGBA')
     b_img_crop = backgroundCrop(b_img,img_size,brmp)
@@ -62,7 +92,21 @@ def adjust_gray(image, new_min, new_max):
     h, w  = image.shape
     # print(image_min, image_max)
     adjusted = np.zeros((h, w))
-    adjusted = (image - image_min)*((new_max - new_min)/(image_max - image_min)) + new_min
+    
+    # ゼロ除算を防ぐための対策
+    if image_max - image_min == 0:
+        # 全ピクセルが同じ値の場合、中間値で埋める
+        adjusted.fill((new_min + new_max) / 2)
+    else:
+        adjusted = (image - image_min)*((new_max - new_min)/(image_max - image_min)) + new_min
+    
+    # NaN/Infチェックと修正
+    adjusted = np.nan_to_num(adjusted, nan=(new_min + new_max) / 2, 
+                           posinf=new_max, neginf=new_min)
+    
+    # 値の範囲をクリップ
+    adjusted = np.clip(adjusted, new_min, new_max)
+    
     return adjusted.astype(np.uint8)
 
 def gen_halftone_masks():
